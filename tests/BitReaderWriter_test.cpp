@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <span>
+
 #include "BitReader.h"
 #include "BitWriter.h"
 

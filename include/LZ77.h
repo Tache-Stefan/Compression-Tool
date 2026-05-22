@@ -5,14 +5,15 @@
 #include <span>
 #include <vector>
 
-#include "Token.h"
+#include "IsCodec.h"
 
 class LZ77 {
 public:
     LZ77();
 
-    std::span<const Token> compress_block(std::span<const uint8_t> input);
-    std::span<const uint8_t> decompress_block(std::span<const Token> input);
+    inline uint8_t get_codec_id() const noexcept { return 0x01; }
+    std::vector<uint8_t> compress_block(const std::span<const uint8_t>& input);
+    std::vector<uint8_t> decompress_block(const std::span<const uint8_t>& input, const size_t original_size);
 
 private:
     static constexpr size_t MIN_MATCH_LENGTH       = 3;
@@ -28,5 +29,7 @@ private:
         int64_t h = (p[0] << 10) ^ (p[1] << 5) ^ p[2];
         return h & (HASH_SIZE - 1);
     }
-    bool is_valid_match(const std::span<const uint8_t>& input, int64_t candidate_idx, size_t cursor) noexcept;
+    bool is_valid_match(const std::span<const uint8_t>& input, const int64_t candidate_idx, const size_t cursor) noexcept;
 };
+
+static_assert(IsCodec<LZ77>, "LZ77 does not satisfy the IsCodec requirements.");

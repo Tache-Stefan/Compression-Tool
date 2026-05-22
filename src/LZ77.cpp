@@ -3,38 +3,42 @@
 LZ77::LZ77() {
     _output_tokens.reserve(INITIAL_TOKEN_CAPACITY);
     _decompressed_data.reserve(INITIAL_TOKEN_CAPACITY);
+    _hash_table.fill(-1);
 }
 
 std::span<const Token> LZ77::compress_block(std::span<const uint8_t> input) {
     _output_tokens.clear();
+    _hash_table.fill(-1);
 
     for (size_t cursor = 0; cursor < input.size(); ++cursor) {
-        const int64_t loopback_limit = (cursor > MAX_WINDOW_SIZE) ? cursor - MAX_WINDOW_SIZE : 0;
-        uint16_t max_bytes = 0;
-        int64_t best_back_idx = 0;
-
-        for (int64_t back_idx = cursor - 1; back_idx >= loopback_limit; --back_idx) {
-            uint16_t bytes = 0;
-
-            while ((cursor + bytes) < input.size() && 
-                    input[cursor + bytes] == input[back_idx + bytes] && 
-                    bytes < MAX_MATCH_LENGTH) {
-                ++bytes;
-            }
-
-            if (bytes > max_bytes) {
-                max_bytes = bytes;
-                best_back_idx = back_idx;
-            }
+        if (cursor + 2 >= input.size()) {
+            _output_tokens.emplace_back(Literal(input[cursor]));
+            continue;
         }
 
-        if (max_bytes >= MIN_MATCH_LENGTH) {
-            uint16_t distance = cursor - best_back_idx;
-            _output_tokens.emplace_back(std::in_place_type<Match>, distance, max_bytes);
-            cursor += max_bytes - 1;
-        } else {
-            _output_tokens.emplace_back(std::in_place_type<Literal>, input[cursor]);
+        int64_t h = hash(&input[cursor]);
+        int64_t candidate_idx = _hash_table[h];
+        _hash_table[h] = cursor;
+
+        if (!is_valid_match(input, candidate_idx, cursor)) {
+            _output_tokens.emplace_back(Literal(input[cursor]));
+            continue;
         }
+
+        size_t bytes = 0;
+        while (bytes < MAX_MATCH_LENGTH && (cursor + bytes) < input.size() && 
+               input[candidate_idx + bytes] == input[cursor + bytes]) {
+            ++bytes;
+        }
+        _output_tokens.emplace_back(Match(cursor - candidate_idx, bytes));
+
+        for (size_t i = 1; i < bytes; ++i) {
+            if (cursor + i + 2 < input.size()) {
+                int64_t step_h = hash(&input[cursor + i]);
+                _hash_table[step_h] = cursor + i;
+            }
+        }
+        cursor += bytes - 1;
     }
 
     return _output_tokens;
@@ -56,4 +60,17 @@ std::span<const uint8_t> LZ77::decompress_block(std::span<const Token> input) {
     }
 
     return _decompressed_data;
+}
+
+bool LZ77::is_valid_match(const std::span<const uint8_t>& input, int64_t candidate_idx, size_t cursor) noexcept {
+    if (candidate_idx == -1 || (cursor - candidate_idx) > MAX_WINDOW_SIZE) {
+        return false;
+    }
+
+    size_t bytes = 0;
+    while (bytes < MIN_MATCH_LENGTH && input[candidate_idx + bytes] == input[cursor + bytes]) {
+        ++bytes;
+    }
+
+    return bytes == MIN_MATCH_LENGTH;
 }

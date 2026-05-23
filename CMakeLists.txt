@@ -26,8 +26,12 @@ add_library(CompressionTool STATIC
     src/BitReader.cpp
     src/BitWriter.cpp
     src/LZ77.cpp
+    src/Engine.cpp
 )
 target_include_directories(CompressionTool PUBLIC include)
+
+add_executable(archiver src/main.cpp)
+target_link_libraries(archiver PRIVATE CompressionTool)
 
 add_executable(tests 
     tests/BitReaderWriter_test.cpp

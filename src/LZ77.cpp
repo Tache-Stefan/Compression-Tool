@@ -1,5 +1,7 @@
 #include "LZ77.h"
 
+#include <bit>
+#include <cstring>
 #include <queue>
 
 #include "BitWriter.h"
@@ -116,11 +118,7 @@ void LZ77::build_output_tokens(const std::span<const uint8_t>& input) {
             continue;
         }
 
-        size_t bytes = 0;
-        while (bytes < MAX_MATCH_LENGTH && (cursor + bytes) < input.size() && 
-               input[candidate_idx + bytes] == input[cursor + bytes]) {
-            ++bytes;
-        }
+        auto bytes = bytes_matched(input, candidate_idx, cursor);
         _output_tokens.emplace_back(Match(cursor - candidate_idx, bytes));
 
         for (size_t i = 1; i < bytes; ++i) {
@@ -200,4 +198,35 @@ void LZ77::write_compression_bits(const std::array<uint32_t, 257>& freq, std::ve
     }
 
     writer.flush();
+}
+
+size_t LZ77::bytes_matched(const std::span<const uint8_t>& input, const int64_t candidate_idx, const size_t cursor) {
+    const uint8_t* const in_ptr = input.data();
+    const size_t in_size = input.size();
+
+    size_t bytes = 0;
+    const size_t limit = std::min(MAX_MATCH_LENGTH, in_size - cursor);
+    const size_t safe_limit = (limit >= 8) ? (limit - 8) : 0;
+
+    // 64-bit SWAR loop
+    while (bytes <= safe_limit) {
+        uint64_t cursor_chunk, match_chunk;
+
+        std::memcpy(&cursor_chunk, in_ptr + cursor + bytes, 8);
+        std::memcpy(&match_chunk, in_ptr + candidate_idx + bytes, 8);
+        uint64_t diff = cursor_chunk ^ match_chunk;
+
+        if (diff == 0) {
+            bytes += 8;
+        } else {
+            bytes += std::countr_zero(diff) / 8;
+            break;
+        }
+    }
+
+    while (bytes < limit && in_ptr[candidate_idx + bytes] == in_ptr[cursor + bytes]) {
+        ++bytes;
+    }
+
+    return bytes;
 }

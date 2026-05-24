@@ -43,6 +43,7 @@ private:
     [[nodiscard]] std::array<uint32_t, 257> calc_frequencies() const noexcept;
     [[nodiscard]] size_t build_huffman_tree(const std::array<uint32_t, 257>& freq);
     void write_compression_bits(const std::array<uint32_t, 257>& freq, std::vector<uint8_t>& packed_data);
+    [[nodiscard]] size_t bytes_matched(const std::span<const uint8_t>& input, const int64_t candidate_idx, const size_t cursor);
 };
 
 static_assert(IsCodec<LZ77>, "LZ77 does not satisfy the IsCodec requirements.");

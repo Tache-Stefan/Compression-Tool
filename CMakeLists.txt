@@ -33,6 +33,7 @@ add_library(CompressionTool STATIC
     src/BitWriter.cpp
     src/LZ77.cpp
     src/Engine.cpp
+    src/ThreadPool.cpp
 )
 target_include_directories(CompressionTool PUBLIC include)
 
@@ -49,3 +50,6 @@ gtest_discover_tests(tests)
 
 add_executable(compression_benchmark benchmarks/compression_benchmark.cpp)
 target_link_libraries(compression_benchmark PRIVATE CompressionTool benchmark::benchmark)
+
+add_executable(pipeline_benchmark benchmarks/pipeline_benchmark.cpp)
+target_link_libraries(pipeline_benchmark PRIVATE CompressionTool benchmark::benchmark)

@@ -15,17 +15,23 @@
 #include "ThreadPool.h"
 
 void Engine::run() const {
-    if (mode == "-lz77") {
-        compress_parallel();
-    } else if (mode == "-x") {
-        decompress_parallel();
-    } else {
-        std::println("[!] Unknown command: {}", mode);
-        print_usage();
+    try {
+        if (mode == "-lz77") {
+            compress_parallel(LZ77::get_codec_id());
+        } else if (mode == "-lz78") {
+            compress_parallel(LZ78::get_codec_id());
+        } else if (mode == "-x") {
+            decompress_parallel();
+        } else {
+            std::println("[!] Unknown command: {}", mode);
+            print_usage();
+        }
+    } catch (const std::exception& ex) {
+        std::println("[!] Error: {}", ex.what());
     }
 }
 
-void Engine::compress_parallel() const {
+void Engine::compress_parallel(const uint8_t codec_id) const {
     const auto start_time = std::chrono::high_resolution_clock::now();
 
     int fd_in = open(input_path.c_str(), O_RDONLY);
@@ -44,11 +50,11 @@ void Engine::compress_parallel() const {
     std::ofstream out_file(output_path, std::ios::binary);
     if (!out_file) throw std::runtime_error("Cannot open output file: " + output_path);
     
-    ArchiveHeader header{'Q', 'A', 'R', 'C', 0x01, static_cast<uint64_t>(in_size)};
+    ArchiveHeader header{'Q', 'A', 'R', 'C', codec_id, static_cast<uint64_t>(in_size)};
     out_file.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
     const size_t num_threads = std::thread::hardware_concurrency();
-    ThreadPool pool(num_threads);
+    ThreadPool pool(num_threads, codec_id);
     std::queue<std::future<Result>> futures;
 
     const size_t CHUNK_SIZE = 1024 * 1024; // 1 MB
@@ -129,6 +135,10 @@ void Engine::decompress_parallel() const {
     
     if (std::strncmp(header.magic, "QARC", 4) != 0) throw std::runtime_error("Invalid QARC archive!");
 
+    if (header.codec_id != LZ77::get_codec_id() && header.codec_id != LZ78::get_codec_id()) {
+        throw std::runtime_error("Unsupported codec ID in archive: " + std::to_string(header.codec_id));
+    }
+
     int fd_out = open(output_path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (fd_out < 0) throw std::runtime_error("Cannot open output file.");
     
@@ -143,7 +153,7 @@ void Engine::decompress_parallel() const {
     size_t out_offset = 0;
 
     const size_t num_threads = std::thread::hardware_concurrency();
-    ThreadPool pool(num_threads);
+    ThreadPool pool(num_threads, header.codec_id);
     std::queue<std::future<Result>> futures;
     
     const size_t MAX_IN_FLIGHT = num_threads * 2;
@@ -215,6 +225,7 @@ void Engine::decompress_parallel() const {
 
 void Engine::print_usage() const {
     std::println("Usage:\n"
-                "  Compress: ./quant_archiver -lz77 <input_file> <output_archive>\n"
-                "  Extract:  ./quant_archiver -x <input_archive> <output_file>");
+                 "  Compress (LZ77): ./quant_archiver -lz77 <input_file> <output_archive>\n"
+                 "  Compress (LZ78): ./quant_archiver -lz78 <input_file> <output_archive>\n"
+                 "  Extract:         ./quant_archiver -x <input_archive> <output_file>");
 }

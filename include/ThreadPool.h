@@ -11,14 +11,14 @@
 
 class ThreadPool {
 public:
-    ThreadPool(size_t num_threads);
+    ThreadPool(size_t num_threads, uint8_t codec_id);
     ~ThreadPool();
 
     [[nodiscard]] std::future<Result> enqueue_chunk(const size_t chunk_id, const JobType type,
                                                     const size_t original_size, std::vector<uint8_t>&& data);
 
 private:
-    void worker_loop(const size_t worker_id);
+    void worker_loop(const size_t worker_id, const uint8_t codec_id);
 
     std::vector<std::thread> _workers;
     std::vector<std::unique_ptr<SPSC<Task>>> _queues; 

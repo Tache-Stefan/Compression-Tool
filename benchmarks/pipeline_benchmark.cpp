@@ -34,7 +34,7 @@ std::string create_temp_file() {
     return std::string(temp_path);
 }
 
-static void BM_Engine_Compress_Shakespeare(benchmark::State& state) {
+static void BM_Engine_LZ77_Compress_Shakespeare(benchmark::State& state) {
     auto data = load_test_file("test_data/Shakespeare.txt");
     
     for (auto _ : state) {
@@ -61,7 +61,7 @@ static void BM_Engine_Compress_Shakespeare(benchmark::State& state) {
         data.size(), benchmark::Counter::kIsIterationInvariant);
 }
 
-static void BM_Engine_Decompress_Shakespeare(benchmark::State& state) {
+static void BM_Engine_LZ77_Decompress_Shakespeare(benchmark::State& state) {
     auto data = load_test_file("test_data/Shakespeare.txt");
     
     for (auto _ : state) {
@@ -94,7 +94,69 @@ static void BM_Engine_Decompress_Shakespeare(benchmark::State& state) {
         data.size(), benchmark::Counter::kIsIterationInvariant);
 }
 
-BENCHMARK(BM_Engine_Compress_Shakespeare);
-BENCHMARK(BM_Engine_Decompress_Shakespeare);
+static void BM_Engine_LZ78_Compress_Shakespeare(benchmark::State& state) {
+    auto data = load_test_file("test_data/Shakespeare.txt");
+    
+    for (auto _ : state) {
+        state.PauseTiming();
+
+        std::string input_file = create_temp_file();
+        std::string output_file = create_temp_file();
+        
+        std::ofstream out(input_file, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(data.data()), data.size());
+
+        state.ResumeTiming();
+    
+        Engine engine("-lz78", input_file, output_file, false);
+        engine.run();
+
+        state.PauseTiming();
+        fs::remove(input_file);
+        fs::remove(output_file);
+        state.ResumeTiming();
+    }
+    
+    state.counters["bytes_processed"] = benchmark::Counter(
+        data.size(), benchmark::Counter::kIsIterationInvariant);
+}
+
+static void BM_Engine_LZ78_Decompress_Shakespeare(benchmark::State& state) {
+    auto data = load_test_file("test_data/Shakespeare.txt");
+    
+    for (auto _ : state) {
+        state.PauseTiming();
+        
+        std::string input_file = create_temp_file();
+        std::string compressed_file = create_temp_file();
+        std::string decompressed_file = create_temp_file();
+        
+        std::ofstream out(input_file, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(data.data()), data.size());
+        out.close();
+        
+        Engine comp_engine("-lz78", input_file, compressed_file, false);
+        comp_engine.run();
+        
+        state.ResumeTiming();
+
+        Engine engine("-x", compressed_file, decompressed_file, false);
+        engine.run();
+
+        state.PauseTiming();
+        fs::remove(input_file);
+        fs::remove(compressed_file);
+        fs::remove(decompressed_file);
+        state.ResumeTiming();
+    }
+    
+    state.counters["bytes_processed"] = benchmark::Counter(
+        data.size(), benchmark::Counter::kIsIterationInvariant);
+}
+
+BENCHMARK(BM_Engine_LZ77_Compress_Shakespeare);
+BENCHMARK(BM_Engine_LZ77_Decompress_Shakespeare);
+BENCHMARK(BM_Engine_LZ78_Compress_Shakespeare);
+BENCHMARK(BM_Engine_LZ78_Decompress_Shakespeare);
 
 BENCHMARK_MAIN();

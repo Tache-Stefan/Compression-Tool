@@ -14,9 +14,9 @@ class LZ77 {
 public:
     LZ77();
 
-    inline uint8_t get_codec_id() const noexcept { return 0x01; }
-    std::vector<uint8_t> compress_block(const std::span<const uint8_t>& input);
-    std::vector<uint8_t> decompress_block(const std::span<const uint8_t>& input, const size_t original_size);
+    constexpr inline static uint8_t get_codec_id() noexcept { return 0x01; }
+    [[nodiscard]] std::vector<uint8_t> compress_block(const std::span<const uint8_t>& input);
+    [[nodiscard]] std::vector<uint8_t> decompress_block(const std::span<const uint8_t>& input, const size_t original_size);
 
 private:
     static constexpr size_t MIN_MATCH_LENGTH       = 3;
@@ -32,7 +32,7 @@ private:
     std::vector<HuffmanNode> huffman_tree;
     std::array<HuffmanCode, 257> _codebook;
 
-    inline int64_t hash(const uint8_t* p) noexcept {
+    [[nodiscard]] inline int64_t hash(const uint8_t* p) noexcept {
         int64_t h = (p[0] << 10) ^ (p[1] << 5) ^ p[2];
         return h & (HASH_SIZE - 1);
     }

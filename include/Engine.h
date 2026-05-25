@@ -40,6 +40,6 @@ private:
     std::string output_path;
     bool print_info = true;
 
-    void compress_parallel() const;
+    void compress_parallel(const uint8_t codec_id) const;
     void decompress_parallel() const;
 };

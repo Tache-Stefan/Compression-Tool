@@ -3,6 +3,10 @@
 #include <vector>
 #include <cstdint>
 #include <future>
+#include <variant>
+
+#include "LZ77.h"
+#include "LZ78.h"
 
 enum class JobType {
     Compress,
@@ -22,3 +26,5 @@ struct Task {
     std::vector<uint8_t> input_data;
     std::promise<Result> promise;
 };
+
+using CodecVariant = std::variant<LZ77, LZ78>;

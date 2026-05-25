@@ -9,8 +9,8 @@ class BitReader {
 public:
     explicit BitReader(std::span<const uint8_t> buffer);
 
-    uint32_t read_bits(const uint32_t bits_to_read);
-    uint32_t peek_bits(const uint32_t bits_to_peek);
+    [[nodiscard]] uint32_t read_bits(const uint32_t bits_to_read);
+    [[nodiscard]] uint32_t peek_bits(const uint32_t bits_to_peek);
     void advance_bits(const uint32_t bits_to_advance) noexcept;
 
 private:

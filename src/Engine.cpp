@@ -15,19 +15,15 @@
 #include "ThreadPool.h"
 
 void Engine::run() const {
-    try {
-        if (mode == "-lz77") {
-            compress_parallel(LZ77::get_codec_id());
-        } else if (mode == "-lz78") {
-            compress_parallel(LZ78::get_codec_id());
-        } else if (mode == "-x") {
-            decompress_parallel();
-        } else {
-            std::println("[!] Unknown command: {}", mode);
-            print_usage();
-        }
-    } catch (const std::exception& ex) {
-        std::println("[!] Error: {}", ex.what());
+    if (mode == "-lz77") {
+        compress_parallel(LZ77::get_codec_id());
+    } else if (mode == "-lz78") {
+        compress_parallel(LZ78::get_codec_id());
+    } else if (mode == "-x") {
+        decompress_parallel();
+    } else {
+        std::println("[!] Unknown command: {}", mode);
+        print_usage();
     }
 }
 
